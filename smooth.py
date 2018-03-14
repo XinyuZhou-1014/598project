@@ -3,6 +3,8 @@ import json
 import functools
 from matplotlib import pyplot as plt
 from matplotlib import animation
+import skeleton
+
 
 # one more thing: concentrate on the single people!
 # sometimes there will be more than one people in the video
@@ -65,19 +67,19 @@ def render_to_video(matrix):
 
     def animate(i):
         x, y = get_xy(i)
-        scatter.set_xdata(x)
-        scatter.set_ydata(y)
-        return scatter
+        plot.set_xdata(x)
+        plot.set_ydata(y)
+        return plot
 
     def init():
         animate(0)
-        return scatter
+        return plot
 
     print(matrix.shape)
     print(matrix)
     fig, ax = plt.subplots()
     x, y = get_xy(0)
-    scatter, = ax.plot(x, y, 'o-')
+    plot, = ax.plot(x, y, 'o-')
     plt.xlim([0, 1208])
     plt.ylim([0, 679])
     ani = animation.FuncAnimation(fig=fig,
@@ -90,11 +92,22 @@ def render_to_video(matrix):
 
 
 
+def construct_skeleton_list(smooth_factor):
+    list_of_json = read()
+    list_of_keypoints = np.array(list(map(get_keypoints, list_of_json)))
+    smoothed = np.apply_along_axis(smooth_by, 0, list_of_keypoints, smooth_factor)
+    skeleton_list = skeleton.create_skeleton_list(smoothed)
+    return skeleton_list
+
+
 def main(smooth_factor):
     list_of_json = read()
     list_of_keypoints = np.array(list(map(get_keypoints, list_of_json)))
     smoothed = np.apply_along_axis(smooth_by, 0, list_of_keypoints, smooth_factor)
     render_to_video(smoothed)
 
+if __name__ == "__main__":
+    #main(3)
+    l = construct_skeleton_list(1)
+    print(l[0])
 
-main(3)
