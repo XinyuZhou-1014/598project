@@ -1,20 +1,40 @@
 import numpy as np
 import json
-import functools
 from matplotlib import pyplot as plt
 from matplotlib import animation
 import skeleton
-
-
+import argparse
+import os
 # one more thing: concentrate on the single people!
 # sometimes there will be more than one people in the video
-filename_base = './output_3/new_00000000{:0>4d}_keypoints.json'
 
-def read():
+
+parser = argparse.ArgumentParser()
+parser.add_argument('filepath', type=str,
+                    help='the dir of the json files')
+parser.add_argument('-s', '--smooth', type=int, default=1,
+                    help="smooth factor")
+parser.add_argument("--height", type=int, default=1000,
+                    help="height of video")
+parser.add_argument("--width", type=int, default=1000,
+                    help="width of video")
+
+
+args = parser.parse_args()
+path = args.filepath
+smooth_factor = args.smooth
+height, width = args.height, args.width
+
+def read(path):
+    file_list = []
     res = []
-    for i in range(279):
-        filename = filename_base.format(i)
-        with open(filename, 'r') as f:
+    for filename in os.listdir(path):
+        if filename.endswith("keypoints.json"):
+            file_list.append(filename)
+    file_list.sort()
+
+    for filename in file_list:
+        with open(os.path.join(path, filename), 'r') as f:
             res.append(json.load(f))
     return res
 
@@ -62,7 +82,7 @@ def render_to_video(matrix):
         points = matrix[frame]
         points = to_skeleton(points)
         x = [points[i][0] for i in range(len(points))]
-        y = [680 - points[i][1] for i in range(len(points))]
+        y = [height - points[i][1] for i in range(len(points))]
         return x, y
 
     def animate(i):
@@ -76,15 +96,14 @@ def render_to_video(matrix):
         return plot
 
     print(matrix.shape)
-    print(matrix)
     fig, ax = plt.subplots()
     x, y = get_xy(0)
     plot, = ax.plot(x, y, 'o-')
-    plt.xlim([0, 1208])
-    plt.ylim([0, 679])
+    plt.xlim([0, width])
+    plt.ylim([0, height])
     ani = animation.FuncAnimation(fig=fig,
                                   func=animate,
-                                  frames=1000,
+                                  frames=matrix.shape[0],
                                   init_func=init,
                                   interval=20,
                                   blit=False)
@@ -92,22 +111,22 @@ def render_to_video(matrix):
 
 
 
-def construct_skeleton_list(smooth_factor):
-    list_of_json = read()
+def construct_skeleton_list(path, smooth_factor):
+    list_of_json = read(path)
     list_of_keypoints = np.array(list(map(get_keypoints, list_of_json)))
     smoothed = np.apply_along_axis(smooth_by, 0, list_of_keypoints, smooth_factor)
     skeleton_list = skeleton.create_skeleton_list(smoothed)
     return skeleton_list
 
 
-def main(smooth_factor):
-    list_of_json = read()
+def main(path, smooth_factor):
+    list_of_json = read(path)
     list_of_keypoints = np.array(list(map(get_keypoints, list_of_json)))
     smoothed = np.apply_along_axis(smooth_by, 0, list_of_keypoints, smooth_factor)
     render_to_video(smoothed)
 
 if __name__ == "__main__":
-    #main(3)
-    l = construct_skeleton_list(1)
-    print(l[0])
+    main(path, smooth_factor)
+    #l = construct_skeleton_list(path, smooth_factor)
+    #print(l[0])
 
