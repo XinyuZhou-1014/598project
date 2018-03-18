@@ -1,3 +1,5 @@
+import numpy as np
+
 idx_body = {
     0: 'Nose',
     1: 'Neck',
@@ -43,11 +45,12 @@ class Skeleton():
         assert len(keypoint_list) in [54, 18], "Wrong length on keypoint list"
         for idx in range(18):
             if len(keypoint_list) == 54:
-                x, y, conf = [keypoint_list[idx*3:idx*3+3]]
+                x, y, conf = keypoint_list[idx*3:idx*3+3]
             elif len(keypoint_list) == 18:
                 x, y, conf = keypoint_list[idx]
             point_3d = Point(x, y, conf, idx)
             self.points.append(point_3d)
+        self.points = np.array(self.points)
 
     def __str__(self):
         return "\n".join([str(x) for x in self.points])
@@ -87,3 +90,8 @@ def create_skeleton_list(matrix_3d):
     skeleton_list = [Skeleton(points) for points in matrix_3d]
     return skeleton_list
 
+
+if __name__ == "__main__":
+   sk = Skeleton(list(range(54)))
+   print(sk.plot_points)
+   print(sk.animate_lines)
