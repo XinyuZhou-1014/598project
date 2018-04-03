@@ -1,4 +1,7 @@
 import numpy as np
+import math
+import math_functions
+
 
 idx_body = {
     0: 'Nose',
@@ -33,11 +36,22 @@ class Point():
         self.part = idx_body[idx]
 
     def __str__(self):
-        return "({}, {}, {})".format(self.idx, self.x, self.y)
+        return "({}, {}, {}, {}, {})".format(
+            self.idx, self.x, self.y, self.z, self.conf)
 
     @property
     def pos(self):
-        return (int(self.x), int(self.y))
+        return self.x, self.y
+
+    def distance_2d(self, other):
+        return math.sqrt((self.x - other.x) ** 2 +
+                         (self.y - other.y) ** 2)
+
+    def distance_3d(self, other):
+        return math.sqrt((self.x - other.x) ** 2 +
+                         (self.y - other.y) ** 2 +
+                         (self.z - other.z) ** 2)
+
 
 class Skeleton():
     def __init__(self, keypoint_list):
@@ -64,13 +78,15 @@ class Skeleton():
                 8, 9, 10,
                 9, 8, 1,
                 11, 12, 13]
+        mask = self.mask_filter(mask, dim=1)
         points = self.points[mask]
-        if dim == 2:
-            return [p.x for p in points], [p.y for p in points]
-        elif dim == 3:
-            return ([p.x for p in points],
-                    [p.y for p in points],
-                    [p.z for p in points])
+        return [p.x for p in points], [p.y for p in points]
+
+    @property
+    def animate_points(self):
+        mask = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        mask = self.mask_filter(mask, dim=1)
+        return self.points[mask]
 
     @property
     def animate_lines(self):
@@ -78,10 +94,49 @@ class Skeleton():
                 (1, 5), (5, 6), (6, 7),
                 (1, 8), (8, 9), (9, 10),
                 (1, 11), (11, 12), (12, 13)]
-
+        mask = self.mask_filter(mask, dim=2)
         lines = [(self.points[i], self.points[j]) for i, j in mask]
         return lines
 
+    def mask_filter(self, mask, dim):
+        return mask  # TODO
+
+    def distance_2d(self, idx_1, idx_2):
+        return self.points[idx_1].distance_2d(self.points[idx_2])
+
+    def distance_3d(self, idx_1, idx_2):
+        return self.points[idx_1].distance_3d(self.points[idx_2])
+
+    # func 3d
+    def points_to_3d(self, standard_skeleton):
+        derivation_order = [(10, 9, 1),
+                            (13, 12, 1),
+                            (9, 8, -1),
+                            (12, 11, -1),
+                            (11, 1, 1),
+                            (8, 1, 1, "re_calc"),
+                            (1, 2, 0),
+                            (1, 5, 0),
+                            (2, 3, -1),
+                            (5, 6, -1),
+                            (3, 4, 1),
+                            (6, 7, 1),
+                            (1, 0, 1)]
+        for items in derivation_order:
+            re_calc = (len(items) == 4)
+            idx_start, idx_end, sign = items[:3]
+            standard_distance = standard_skeleton.distance_2d(idx_start, idx_end)
+            try:
+                math_functions.z_axis_calc(self.points[idx_start],
+                                       self.points[idx_end],
+                                       standard_distance,
+                                       sign,
+                                       re_calc)
+            except AssertionError:
+                print(self.points[idx_start], self.points[idx_end])
+                print(self.points[idx_start].distance_2d(self.points[idx_end]))
+                print(standard_distance)
+                raise
 
 def create_skeleton_list(matrix_3d):
     assert len(matrix_3d.shape) == 3
@@ -92,6 +147,6 @@ def create_skeleton_list(matrix_3d):
 
 
 if __name__ == "__main__":
-   sk = Skeleton(list(range(54)))
-   print(sk.plot_points)
-   print(sk.animate_lines)
+    sk = Skeleton(list(range(54)))
+    print(sk.plot_points)
+    print(sk.animate_lines)
