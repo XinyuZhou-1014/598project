@@ -9,24 +9,6 @@ import os
 # sometimes there will be more than one people in the video
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('filepath', type=str,
-                    help='the dir of the json files')
-parser.add_argument('-s', '--smooth', type=int, default=1,
-                    help="smooth factor")
-parser.add_argument('--skip', type=int, default=1,
-                    help="skip factor")
-parser.add_argument("--height", type=int, default=1000,
-                    help="height of video")
-parser.add_argument("--width", type=int, default=1000,
-                    help="width of video")
-
-
-args = parser.parse_args()
-path = args.filepath
-smooth_factor = args.smooth
-height, width = args.height, args.width
-skip_factor = args.skip
 
 def read(path):
     file_list = []
@@ -114,7 +96,7 @@ def render_to_video(matrix):
 
 
 
-def construct_skeleton_list(path, smooth_factor):
+def construct_skeleton_list(path, smooth_factor, skip_factor=1):
     list_of_json = read(path)
     list_of_keypoints = np.array(list(map(get_keypoints, list_of_json)))
     smoothed = np.apply_along_axis(smooth_by, 0, list_of_keypoints, smooth_factor)
@@ -129,6 +111,24 @@ def main(path, smooth_factor):
     render_to_video(smoothed[::skip_factor])
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('filepath', type=str,
+                        help='the dir of the json files')
+    parser.add_argument('-s', '--smooth', type=int, default=1,
+                        help="smooth factor")
+    parser.add_argument('--skip', type=int, default=1,
+                        help="skip factor")
+    parser.add_argument("--height", type=int, default=1000,
+                        help="height of video")
+    parser.add_argument("--width", type=int, default=1000,
+                        help="width of video")
+
+    args = parser.parse_args()
+    path = args.filepath
+    smooth_factor = args.smooth
+    height, width = args.height, args.width
+    skip_factor = args.skip
+
     main(path, smooth_factor)
     #l = construct_skeleton_list(path, smooth_factor)
     #print(l[0])
