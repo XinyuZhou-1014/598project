@@ -28,16 +28,25 @@ body_idx = {val: key for key, val in idx_body.items()}
 
 
 class Point():
-    def __init__(self, x, y, conf, idx):
+    def __init__(self, x, y, conf, idx, z=0):
         # args: x, y, confidence
         self.x, self.y, self.conf = x, y, conf
-        self.z = 0
+        self.z = z
         self.idx = idx
         self.part = idx_body[idx]
 
     def __str__(self):
         return "({}, {}, {}, {}, {})".format(
             self.idx, self.x, self.y, self.z, self.conf)
+
+    def __eq__(self, other):
+        if isinstance(other, Point):
+            return (self.x == other.x and
+                    self.y == other.y and
+                    self.conf == other.conf and
+                    self.idx == other.idx and
+                    self.z == other.z)
+        return False
 
     @property
     def pos(self):
