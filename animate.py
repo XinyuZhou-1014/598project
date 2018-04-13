@@ -24,12 +24,16 @@ parser.add_argument('--skip', type=int, default=1,
                     help="skip factor")
 parser.add_argument('--scale', type=float, default=1.0,
                     help="scale factor")
+parser.add_argument('-z', "--z_axis", default=False, action="store_true",
+                    help="if true, to z axis")
+
 
 args = parser.parse_args()
 path = args.filepath
 smooth_factor = args.smooth
 skip_factor = args.skip
 scale_factor = args.scale
+to_z_axis = args.z_axis
 
 def draw_animate(skeleton, screen, scale_factor=1.0):
     for point in skeleton.animate_points:
@@ -53,8 +57,9 @@ def draw_animate_3d(skeleton, standard_skeleton, screen, scale_factor=1.0):
     for point in skeleton.animate_points:
         x, y = point.pos
         z = point.z
-        z, x = x, z
-        x += 400
+        if to_z_axis:
+            z, x = x, z
+            x += 200
         x = int(x * scale_factor)
         y = int(y * scale_factor)
         #adjust_point_size = int(POINT_SIZE * (1 + z / 400))
@@ -65,8 +70,12 @@ def draw_animate_3d(skeleton, standard_skeleton, screen, scale_factor=1.0):
         pygame.draw.circle(screen, adjust_point_color, (x, y), adjust_point_size)
 
     for line in skeleton.animate_lines:
-        x1, y1 = line[0].z + 400, line[0].y
-        x2, y2 = line[1].z + 400, line[1].y
+        x1, y1 = line[0].x, line[0].y
+        x2, y2 = line[1].x, line[1].y
+        if to_z_axis:
+            x1 = line[0].z + 200
+            x2 = line[1].z + 200
+
         x1 = int(x1 * scale_factor)
         x2 = int(x2 * scale_factor)
         y1 = int(y1 * scale_factor)
