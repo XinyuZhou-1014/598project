@@ -1,9 +1,16 @@
-rm -r ~/output/*
+#!/bin/bash
+mkdir input
+mv we* input
 
-cd openpose
-for filename in "we_1" "we_2" "we_3" "we_4" "we_5"
+rm -r ~/output/*
+mkdir ~/output
+
+cd ~/openpose
+
+for filename_ext in "$search_dir"~/input/*
 do
-	echo ${filename}
+  filename=${filename_ext:8:4}
+  echo ${filename}
 	mkdir ~/output/${filename}
 	
 	./build/examples/openpose/openpose.bin \
@@ -17,6 +24,6 @@ do
 done
 
 cd ~/
-tar cf  ~/res.tar "~/output/"
+tar cf  ~/res.tar "output"
 
 
