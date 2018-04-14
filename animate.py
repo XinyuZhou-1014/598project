@@ -1,17 +1,21 @@
 import pygame
 from pygame.locals import *
 import sys
-import math
 import smooth
 import argparse
-import pygame
 from numpy import array
 from math_functions import rotation_matrix
+
 
 WIDTH = 800
 HEIGHT = 800
 FPS = 60
-BLACK, RED, BLUE, GREY = (0, 0, 0), (255, 128, 128), (128, 128, 255), (127, 127, 127)
+BLACK = (0, 0, 0)
+RED = (255, 128, 128)
+BLUE = (128, 128, 255)
+GREY = (127, 127, 127)
+
+# animate factors
 BACKGROUND_COLOR = BLACK
 POINT_COLOR = RED
 POINT_SIZE = 6
@@ -20,6 +24,9 @@ LINE_WIDTH = 4
 FONT = "arial"
 FONT_SIZE = 24
 FONT_COLOR = GREY
+
+# fit coordinate to screen
+FIT_FUNC = lambda coordinate, frame: 4 * coordinate + frame / 2 - 200
 
 
 parser = argparse.ArgumentParser()
@@ -42,6 +49,7 @@ scale_factor = args.scale
 
 class Physical:
     __rotation = [0, 0, 0]  # radians around each axis
+
     def __init__(self, vertices, edges):
         """
         a 3D object that can rotate around the three axes
@@ -51,7 +59,6 @@ class Physical:
         """
         self.__vertices = array(vertices)
         self.__edges = tuple(edges)
-        #self.__rotation = [0, 0, 0]  # radians around each axis
 
     @classmethod
     def rotate(cls, axis, theta):
@@ -82,7 +89,7 @@ class Paint:
             skeleton.points_to_3d(s_list[0])
             v_list = []
             for point in skeleton.animate_points:
-                # divide by 10 to fit the obejct into screen
+                # multiply by scale_factor to fit the obejct into screen
                 v_list.append((point.x * scale_factor,
                                point.y * scale_factor,
                                point.z * scale_factor))
@@ -105,13 +112,13 @@ class Paint:
         and scale x, y to the coordinates of the screen
         """
         # change the coordinate to be fit into screen
-        return [int(4 * coordinate + frame / 2 - 200)
+        return [int(FIT_FUNC(coordinate, frame))
                 for coordinate, frame in zip(vec, self.__size)]
 
     def __handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                exit()
+                sys.exit()
         self._keys_handler(pygame.key.get_pressed())
 
     def _keys_handler(self, keys):
@@ -151,6 +158,7 @@ class Paint:
                                POINT_COLOR,
                                self.__fit(end),
                                point_size)
+            # TODO: some repeated points
 
     def _updateshape(self):
         self._idx += 1
@@ -158,14 +166,15 @@ class Paint:
         self.__shape = self._shapelist[self._idx]
 
     def __draw_text(self):
-        rotation_text = "X:{:6.2f}, Y:{:6.2f}, Z:{:6.2f}".format(*Physical.get_rotation())
+        rotation_text = "X:{:6.2f}, Y:{:6.2f}, Z:{:6.2f}".format(
+            *Physical.get_rotation())
         rotation_text_surface = self.__font.render(
             rotation_text, True, FONT_COLOR)
         self.__screen.blit(rotation_text_surface, (0, 0))
         frame_text = "{}/{}".format(self._idx, len(self._shapelist))
         frame_text_surface = self.__font.render(
             frame_text, True, FONT_COLOR)
-        self.__screen.blit(frame_text_surface, (0, FONT_SIZE)) 
+        self.__screen.blit(frame_text_surface, (0, FONT_SIZE))
 
     def __mainloop(self):
         while True:
