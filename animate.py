@@ -11,7 +11,7 @@ from math import cos, sin
 WIDTH = 800
 HEIGHT = 800
 FPS = 60
-BLACK, RED, BLUE = (0, 0, 0), (255, 128, 128), (128, 255, 128)
+BLACK, RED, BLUE = (0, 0, 0), (255, 128, 128), (128, 128, 255)
 BACKGROUND_COLOR = BLACK
 POINT_COLOR = RED
 POINT_SIZE = 6
@@ -52,6 +52,7 @@ def rotation_matrix(α, β, γ):
 
 
 class Physical:
+    __rotation = [0, 0, 0]  # radians around each axis
     def __init__(self, vertices, edges):
         """
         a 3D object that can rotate around the three axes
@@ -61,11 +62,12 @@ class Physical:
         """
         self.__vertices = array(vertices)
         self.__edges = tuple(edges)
-        self.__rotation = [0, 0, 0]  # radians around each axis
+        #self.__rotation = [0, 0, 0]  # radians around each axis
 
-    def rotate(self, axis, θ):
+    @classmethod
+    def rotate(cls, axis, θ):
         axis_idx = {"X": 0, "Y": 1, "Z": 2}
-        self.__rotation[axis_idx[axis]] += θ
+        cls.__rotation[axis_idx[axis]] += θ
 
     @property
     def lines(self):
@@ -73,9 +75,18 @@ class Physical:
         # an index->location mapping
         return ((location[v1], location[v2]) for v1, v2 in self.__edges)
 
+    @classmethod
+    def get_rotation(cls):
+        return tuple(cls.__rotation)
+
+    @classmethod
+    def reset_rotation(cls):
+        cls.__rotation = [0, 0, 0]
+
 
 class Paint:
-    def __init__(self, skeleton_list):
+    def __init__(self, skeleton_list, font):
+        self.__font = font
         self._s_list = skeleton_list
         self._shapelist = []
         for skeleton in self._s_list:
@@ -127,8 +138,13 @@ class Paint:
         }
         for key in rotate_handle_params:
             if keys[key]:
-                for i in range(self._idx, len(self._shapelist)):
-                    self._shapelist[i].rotate(*rotate_handle_params[key])
+                Physical.rotate(*rotate_handle_params[key])
+            if keys[K_r]:
+                Physical.reset_rotation()
+            if keys[K_SPACE]:
+                Physical.reset_rotation()
+                self._idx = -1
+                self._updateshape()
 
     def __draw_shape(self, point_size=POINT_SIZE, line_width=LINE_WIDTH):
         for start, end in self.__shape.lines:
@@ -156,13 +172,24 @@ class Paint:
         self._idx %= len(self._s_list)
         self.__shape = self._shapelist[self._idx]
 
+    def __draw_text(self):
+        rotation_text = "X: {:6.2f}, Y: {:6.2f}, Z: {:6.2f}".format(*Physical.get_rotation())
+        rotation_text_surface = self.__font.render(
+            rotation_text, True, (127, 127, 127))
+        self.__screen.blit(rotation_text_surface, (0, 0))
+        frame_text = "{}/{}".format(self._idx, len(self._s_list))
+        frame_text_surface = self.__font.render(
+            frame_text, True, (127, 127, 127))
+        self.__screen.blit(frame_text_surface, (0, 33)) 
+
     def __mainloop(self):
         while True:
             self._updateshape()
             self.__handle_events()
             self.__screen.fill(BACKGROUND_COLOR)
             self.__draw_shape()
-            pygame.display.flip()
+            self.__draw_text()
+            pygame.display.update()
             self.__clock.tick(FPS)
 
 
@@ -170,8 +197,10 @@ def main():
     skeleton_list = smooth.construct_skeleton_list(
         path, smooth_factor, skip_factor)
     pygame.init()
-    pygame.display.set_caption("Control - q, w: X; a, s: Y; z, x: Z")
-    Paint(skeleton_list[1:])
+    caption = "Control - q, w: X; a, s: Y; z, x: Z, r: reset, space: restart"
+    pygame.display.set_caption(caption)
+    my_font = pygame.font.SysFont("arial", 32)
+    Paint(skeleton_list, my_font)
 
 
 if __name__ == '__main__':
