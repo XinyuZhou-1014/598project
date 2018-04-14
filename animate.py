@@ -4,6 +4,11 @@ import sys
 import math
 import smooth
 import argparse
+import pygame
+from numpy import array
+from math import cos, sin
+from pygame import K_q, K_w, K_a, K_s, K_z, K_x
+
 
 
 WIDTH = 800
@@ -14,6 +19,8 @@ POINT_COLOR = (0, 150, 200)
 POINT_SIZE = 8
 LINE_COLOR = (0, 150, 200)
 LINE_WIDTH = 4
+BLACK, RED,BLUE = (0, 0, 0), (255, 128, 128), (128,255,128)
+X, Y, Z = 0, 1, 2
 
 parser = argparse.ArgumentParser()
 parser.add_argument('filepath', type=str,
@@ -35,72 +42,128 @@ skip_factor = args.skip
 scale_factor = args.scale
 to_z_axis = args.z_axis
 
-def draw_animate(skeleton, screen, scale_factor=1.0):
-    for point in skeleton.animate_points:
-        x, y = point.pos
-        x = int(x * scale_factor)
-        y = int(y * scale_factor)
-        pygame.draw.circle(screen, POINT_COLOR, (x, y), POINT_SIZE)
 
-    for line in skeleton.animate_lines:
-        x1, y1 = line[0].pos
-        x2, y2 = line[1].pos
-        x1 = int(x1 * scale_factor)
-        x2 = int(x2 * scale_factor)
-        y1 = int(y1 * scale_factor)
-        y2 = int(y2 * scale_factor)
-        pygame.draw.line(screen, LINE_COLOR, (x1, y1), (x2, y2), LINE_WIDTH)
+def rotation_matrix(α, β, γ):
+    """
+    rotation matrix of α, β, γ radians around x, y, z axes (respectively)
+    """
+    sα, cα = sin(α), cos(α)
+    sβ, cβ = sin(β), cos(β)
+    sγ, cγ = sin(γ), cos(γ)
+    return (
+        (cβ*cγ, -cβ*sγ, sβ),
+        (cα*sγ + sα*sβ*cγ, cα*cγ - sγ*sα*sβ, -cβ*sα),
+        (sγ*sα - cα*sβ*cγ, cα*sγ*sβ + sα*cγ, cα*cβ)
+    )
 
 
-def draw_animate_3d(skeleton, standard_skeleton, screen, scale_factor=1.0):
-    skeleton.points_to_3d(standard_skeleton)
-    for point in skeleton.animate_points:
-        x, y = point.pos
-        z = point.z
-        if to_z_axis:
-            z, x = x, z
-            x += 200
-        x = int(x * scale_factor)
-        y = int(y * scale_factor)
-        #adjust_point_size = int(POINT_SIZE * (1 + z / 400))
-        adjust_point_size = POINT_SIZE
-        color_change = 0
-        adjust_point_color = list(POINT_COLOR)
-        adjust_point_color[1] = int(POINT_COLOR[1] + color_change)
-        pygame.draw.circle(screen, adjust_point_color, (x, y), adjust_point_size)
+class Physical:
+    def __init__(self, vertices, edges):
+        """
+        a 3D object that can rotate around the three axes
+        :param vertices: a tuple of points (each has 3 coordinates)
+        :param edges: a tuple of pairs (each pair is a set containing 2 vertices' indexes)
+        """
+        self.__vertices = array(vertices)
+        self.__edges = tuple(edges)
+        self.__rotation = [0, 0, 0]  # radians around each axis
 
-    for line in skeleton.animate_lines:
-        x1, y1 = line[0].x, line[0].y
-        x2, y2 = line[1].x, line[1].y
-        if to_z_axis:
-            x1 = line[0].z + 200
-            x2 = line[1].z + 200
+    def rotate(self, axis, θ):
+        self.__rotation[axis] += θ
 
-        x1 = int(x1 * scale_factor)
-        x2 = int(x2 * scale_factor)
-        y1 = int(y1 * scale_factor)
-        y2 = int(y2 * scale_factor)
-        pygame.draw.line(screen, LINE_COLOR, (x1, y1), (x2, y2), LINE_WIDTH)
+    @property
+    def lines(self):
+        location = self.__vertices.dot(rotation_matrix(*self.__rotation))  # an index->location mapping
+        return ((location[v1], location[v2]) for v1, v2 in self.__edges)
 
-pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+class Paint:
+    def __init__(self,skeleton_list):
+        self._s_list = skeleton_list
+        self._shapelist = []
+        #self.__shape = shape
+        for skeleton in self._s_list:
+            skeleton.points_to_3d(self._s_list[0])
+            v_list = []
+            for point in skeleton.animate_points:
+                #divide by 10 to fit the obejct into screen
+                v_list.append((point.pos[0] / 10, point.pos[1] / 10, point.z / 10))
+
+            self._shapelist.append(Physical(
+                vertices=v_list,
+                edges=({0, 1}, {1, 2}, {2, 3}, {3, 4},
+                       {1, 5}, {5, 6}, {6, 7}, {1, 8},
+                       {8, 9}, {9, 10}, {1, 11}, {11, 12}, {12, 13})))
+
+        self.__size = 1000, 1000
+        self.__clock = pygame.time.Clock()
+        self.__screen = pygame.display.set_mode(self.__size)
+        self._idx = 0
+        self.__mainloop()
+
+    def __fit(self, vec):
+        """
+        ignore the z-element (creating a very cheap projection), and scale x, y to the coordinates of the screen
+        """
+        # change the coordinate to be fit into screen
+        return [round(5 * coordinate + frame/2 -200) for coordinate, frame in zip(vec, self.__size)]
+
+    def __handle_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                exit()
+        self._keys_handler(pygame.key.get_pressed())
+
+    def _keys_handler(self, keys):
+        counter_clockwise = 0.05  # radians
+        clockwise = -counter_clockwise
+        params = {
+            K_q: (X, clockwise),
+            K_w: (X, counter_clockwise),
+            K_a: (Y, clockwise),
+            K_s: (Y, counter_clockwise),
+            K_z: (Z, clockwise),
+            K_x: (Z, counter_clockwise),
+        }
+        for key in params:
+            if keys[key]:
+                for i in range(self._idx, len(self._shapelist)):
+
+                    self._shapelist[i].rotate(*params[key])
+
+    def __draw_shape(self, thickness=4):
+        for start, end in self.__shape.lines:
+            #number to fit into the screen
+            pygame.draw.circle(self.__screen, BLUE, (int(5 *start[0]+ 1000/2 -200), int(5 *start[1] + 1000/2)- 200), thickness+2)
+        for start, end in self.__shape.lines:
+            pygame.draw.line(self.__screen, RED, self.__fit(start), self.__fit(end), thickness)
+
+    def _updateshape(self):
+
+        self._idx += 1
+
+        if self._idx >= len(self._s_list):
+            sys.exit()
+
+        self._idx %= len(self._s_list)
+        self.__shape = self._shapelist[self._idx]
+
+    def __mainloop(self):
+        while True:
+            self._updateshape()
+            self.__handle_events()
+            self.__screen.fill(BLACK)
+            self.__draw_shape()
+            pygame.display.flip()
+            self.__clock.tick(40)
 
 
-skeleton_list = smooth.construct_skeleton_list(path, smooth_factor, skip_factor)
-y_axis = WIDTH  # set by video resolution
 
+def main():
 
-idx = 0
-while True:
-    pygame.display.update()
-    screen.fill(BACKGROUND_COLOR)
-    skeleton = skeleton_list[idx]
-    idx += 1
-    idx %= len(skeleton_list)
-    # draw_animate(skeleton, screen, scale_factor)
-    draw_animate_3d(skeleton, skeleton_list[0], screen, scale_factor)
+    skeleton_list = smooth.construct_skeleton_list(path, smooth_factor, skip_factor)
+    pygame.init()
+    pygame.display.set_caption('Control -   q,w : X    a,s : Y    z,x : Z')
+    Paint(skeleton_list[1:])
 
-    event = pygame.event.poll()
-    if event.type == QUIT:
-        sys.exit()
-
+if __name__ == '__main__':
+    main()

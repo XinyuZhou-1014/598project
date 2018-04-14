@@ -130,6 +130,4 @@ if __name__ == "__main__":
     skip_factor = args.skip
 
     main(path, smooth_factor)
-    #l = construct_skeleton_list(path, smooth_factor)
-    #print(l[0])
 
