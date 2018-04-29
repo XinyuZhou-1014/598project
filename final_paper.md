@@ -10,6 +10,6 @@ Paper components
 |Name|Task|
 |---|---|
 |Xinyu Zhou||
-|Yicong Yang||
+|Yicong Yang|4|
 |Xiaokang Xiang|2|
 |Sun hao||  
