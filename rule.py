@@ -43,6 +43,9 @@ class Violation:
             return (self.idx == other.idx and self.message == other.message)
         return False
 
+    def __repr__(self):
+        return "Frame: {0} Violation type: {1}\n".format(self.idx, self.message)
+
 
 class Standard:
     STANDARD_CONDITION = "Hip lower than knee"
@@ -120,7 +123,7 @@ class Rule:
 
     def check_all_frame(self):
         for idx, points in enumerate(self.points_list):
-            check_once(idx, points)
+            self.check_once(idx, points)
 
     def shoulder_different_height(self, l_shoulder, r_shoulder):
         return not approx_equal(l_shoulder.y, r_shoulder.y)

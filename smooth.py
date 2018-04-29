@@ -1,7 +1,7 @@
 import numpy as np
 import json
-from matplotlib import pyplot as plt
-from matplotlib import animation
+#from matplotlib import pyplot as plt
+#from matplotlib import animation
 import skeleton
 import argparse
 import os
@@ -130,4 +130,3 @@ if __name__ == "__main__":
     skip_factor = args.skip
 
     main(path, smooth_factor)
-
