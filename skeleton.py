@@ -1,6 +1,9 @@
 import numpy as np
 import math
 import math_functions
+import json
+import argparse
+import os
 
 
 idx_body = {
@@ -23,8 +26,35 @@ idx_body = {
     16: 'REar',
     17: 'LEar'
 }
-
 body_idx = {val: key for key, val in idx_body.items()}
+
+
+def read(path):
+    file_list = []
+    res = []
+    for filename in os.listdir(path):
+        if filename.endswith("keypoints.json"):
+            file_list.append(filename)
+    file_list.sort()
+
+    for filename in file_list:
+        with open(os.path.join(path, filename), 'r') as f:
+            res.append(json.load(f))
+    return res
+
+
+def get_keypoints(dct):
+    try:
+        l = dct['people'][0]  # assume only one person here
+        l = l['pose_keypoints_2d']
+    except:
+        print("warning: no person")
+        l = [0] * 54
+    assert len(l) % 3 == 0
+    res = []
+    for i in range(len(l) // 3):
+        res.append(tuple(l[3*i:3*i+3]))
+    return np.array(res)
 
 
 class Point():
@@ -147,15 +177,50 @@ class Skeleton():
                 print(standard_distance)
                 raise
 
-def create_skeleton_list(matrix_3d):
-    assert len(matrix_3d.shape) == 3
-    assert matrix_3d.shape[1] == 18
-    assert matrix_3d.shape[2] == 3
-    skeleton_list = [Skeleton(points) for points in matrix_3d]
+
+def smooth(matrix_3d, smooth_factor):
+    res = np.zeros((len(matrix_3d) - smooth_factor + 1, 18, 3))
+    for frame_idx in range(len(matrix_3d) - smooth_factor + 1):
+        for point_idx in range(18):
+            x_s = matrix_3d[frame_idx:frame_idx+smooth_factor, point_idx, 0]
+            y_s = matrix_3d[frame_idx:frame_idx+smooth_factor, point_idx, 1]
+            conf_s = matrix_3d[frame_idx:frame_idx+smooth_factor, point_idx, 2]
+            conf_all = sum(conf_s)
+            x_new = sum(x_s * conf_s) / conf_all
+            y_new = sum(y_s * conf_s) / conf_all
+            res[frame_idx, point_idx] = [x_new, y_new, conf_all / smooth_factor]
+            #print(res[frame_idx, point_idx])
+    return res
+
+
+def create_skeleton_list(path, smooth_factor, skip_factor):
+    list_of_json = read(path)
+    matrix_3d = np.array(list(map(get_keypoints, list_of_json)))
+    smoothed_matrix_3d = smooth(matrix_3d, smooth_factor)[::skip_factor]
+    assert len(smoothed_matrix_3d.shape) == 3
+    assert smoothed_matrix_3d.shape[1] == 18
+    assert smoothed_matrix_3d.shape[2] == 3
+    skeleton_list = [Skeleton(points) for points in smoothed_matrix_3d]
     return skeleton_list
 
 
 if __name__ == "__main__":
-    sk = Skeleton(list(range(54)))
-    print(sk.plot_points)
-    print(sk.animate_lines)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('filepath', type=str,
+                        help='the dir of the json files')
+    parser.add_argument('-s', '--smooth', type=int, default=1,
+                        help="smooth factor")
+    parser.add_argument('--skip', type=int, default=1,
+                        help="skip factor")
+    parser.add_argument("--height", type=int, default=1000,
+                        help="height of video")
+    parser.add_argument("--width", type=int, default=1000,
+                        help="width of video")
+
+    args = parser.parse_args()
+    path = args.filepath
+    smooth_factor = args.smooth
+    height, width = args.height, args.width
+    skip_factor = args.skip
+
+    print(create_skeleton_list(path, smooth_factor, skip_factor))

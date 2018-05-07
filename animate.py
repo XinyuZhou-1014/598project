@@ -1,7 +1,7 @@
 import pygame
 from pygame.locals import *
 import sys
-import smooth
+import skeleton
 import argparse
 from numpy import array
 from math_functions import rotation_matrix
@@ -188,7 +188,7 @@ class Paint:
 
 
 def main():
-    skeleton_list = smooth.construct_skeleton_list(
+    skeleton_list = skeleton.create_skeleton_list(
         path, smooth_factor, skip_factor)
     pygame.init()
     caption = "Control - q, w: X; a, s: Y; z, x: Z, r: Reset, space: Restart"

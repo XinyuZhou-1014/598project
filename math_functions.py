@@ -11,8 +11,9 @@ def z_axis_change_calc(point_start, point_end, standard_length):
     """
     length = point_start.distance_2d(point_end)
     if length > standard_length:
-        if (length - standard_length) / standard_length < ignore_scale:
+        if abs(length - standard_length) / standard_length < ignore_scale:
             return 0
+        raise ValueError("Current projected length larger than standard length")
     abs_z_axis_diff = math.sqrt(standard_length ** 2 - length ** 2)
     return abs_z_axis_diff
 
