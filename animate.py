@@ -230,17 +230,20 @@ class Paint:
             self.__shape = self._shapelist[self._idx]
 
     def __draw_text(self):
+        # rotation text
         rotation_text = "X:{:6.2f}, Y:{:6.2f}, Z:{:6.2f}".format(
             *Physical.get_rotation())
         rotation_text_surface = self.__font.render(
             rotation_text, True, FONT_COLOR
         )
         self.__screen.blit(rotation_text_surface, (0, 0))
+        # frame text
         frame_text = "{}/{}".format(self._idx, len(self._shapelist))
         frame_text_surface = self.__font.render(
             frame_text, True, FONT_COLOR
         )
         self.__screen.blit(frame_text_surface, (0, FONT_SIZE))
+        # violation text
         idx = 2
         for violation in self.violation_map[self._idx]:
             violation_surface =  self.__font.render(
@@ -248,6 +251,12 @@ class Paint:
             )
             self.__screen.blit(violation_surface, (0, FONT_SIZE*idx))
             idx += 1
+        # pause text
+        if self.pause is True:
+            pause_text = "PAUSED"
+            pause_text_pos = ((WIDTH - len(pause_text) * FONT_SIZE) // 2, 0)
+            pause_surface = self.__font.render(pause_text, True, FONT_COLOR)
+            self.__screen.blit(pause_surface, pause_text_pos)
 
 
     def __update_violation(self):
