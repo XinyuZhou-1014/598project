@@ -1,6 +1,6 @@
 from math import atan, degrees
 
-from util import approx_equal, get_foot_len, get_part
+from util import approx_equal, get_foot_len, get_part, get_hip_height
 
 # place here easy to see
 # idx_body = {
@@ -32,7 +32,17 @@ class Violation:
     RIGHT_KNEE_BUCKLE = "Right knee buckle"
     LEFT_KNEE_EXCEED_TOE = "Left knee exceed toe"
     RIGHT_KNEE_EXCEED_TOE = "Right knee exceed toe"
-    ANKLE_WIDTH = "Left and right ankle width different"
+    ANKLE_WIDTH = "Left and right ankle width are different"
+
+    VIOLATION_MAP = {
+        SHOULDER_HEIGHT : (2, 5),
+        HIP_HEIGHT: (8, 11),
+        LEFT_KNEE_BUCKLE: (12,),
+        RIGHT_KNEE_BUCKLE: (9,),
+        LEFT_KNEE_EXCEED_TOE: (12, 13),
+        RIGHT_KNEE_EXCEED_TOE: (9, 10),
+        ANKLE_WIDTH: (10, 13)
+    }
 
     def __init__(self, idx, message):
         self.idx = idx
@@ -84,9 +94,20 @@ class Rule:
 
     def __init__(self, points_list):
         self.points_list = points_list
+        self.shoulder_offset, self.hip_offset = self.init_offset(self.points_list[0])
         self.violation_list = []
         self.standard = Standard()
         self.foot_len = get_foot_len(self.points_list[0])
+        self.hip_height = get_hip_height(self.points_list[0])
+        self.init_l_shoulder = get_part(self.points_list[0], 'LShoulder')
+        self.init_r_shoulder = get_part(self.points_list[0], 'RShoulder')
+
+    def init_offset(self, points):
+        l_shoulder = get_part(points, 'LShoulder')
+        r_shoulder = get_part(points, 'RShoulder')
+        l_hip = get_part(points, 'LHip')
+        r_hip = get_part(points, 'RHip')
+        return l_shoulder.y-r_shoulder.y, l_hip.y-r_hip.y
 
     def check_once(self, idx, points):
         # assign point to part
@@ -112,7 +133,7 @@ class Rule:
             self.violation_list.append(Violation(idx, Violation.LEFT_KNEE_EXCEED_TOE))
         if self.knee_exceed_toe(r_knee, r_ankle):
             self.violation_list.append(Violation(idx, Violation.RIGHT_KNEE_EXCEED_TOE))
-        if self.ankle_different_width(neck, l_ankle, r_ankle):
+        if self.ankle_different_width(l_ankle, r_ankle):
             self.violation_list.append(Violation(idx, Violation.ANKLE_WIDTH))
 
         if self.standard.is_reached() != self.check_standard(l_hip, r_hip, l_knee, r_knee):
@@ -126,7 +147,7 @@ class Rule:
             self.check_once(idx, points)
 
     def shoulder_different_height(self, l_shoulder, r_shoulder):
-        return not approx_equal(l_shoulder.y, r_shoulder.y)
+        return not approx_equal(l_shoulder.y, r_shoulder.y+self.shoulder_offset)
 
     def body_lean_over(self):
         ## TODO: define what is body lean over
@@ -137,16 +158,16 @@ class Rule:
                self.hip_lower_than_knee(r_hip, r_knee))
 
     def hip_lower_than_knee(self, hip, knee):
-        return hip.y >= knee.y
+        return hip.y + self.hip_height >= knee.y
 
     def hip_different_height(self, l_hip, r_hip):
-        return not approx_equal(l_hip.y, r_hip.y)
+        return not approx_equal(l_hip.y, r_hip.y+self.hip_offset)
 
     def knee_exceed_toe(self, knee, ankle):
         foot_z = ankle.z + self.foot_len
         return knee.z > foot_z
 
-    def knee_buckle(self, hip, knee, ankle, side, buck_angle=145.0):
+    def knee_buckle(self, hip, knee, ankle, side, buck_angle=170.0):
         if side == 'left' and knee.x >= hip.x:
             return False
         elif side == 'right' and knee.x <= hip.x:
@@ -156,9 +177,9 @@ class Rule:
         total_angle = degrees(hip_knee_angle + knee_ankle_angle)
         return total_angle <= buck_angle
 
-    def ankle_different_width(self, neck, l_ankle, r_ankle):
-        l_width = abs(neck.x - l_ankle.x)
-        r_width = abs(neck.x - r_ankle.x)
+    def ankle_different_width(self,l_ankle, r_ankle):
+        l_width = abs(self.init_l_shoulder.x - l_ankle.x)
+        r_width = abs(self.init_r_shoulder.x - r_ankle.x)
         return not approx_equal(l_width, r_width)
 
     def move_too_fast(self):
