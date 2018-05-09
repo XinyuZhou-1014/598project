@@ -167,10 +167,10 @@ class Skeleton():
             standard_distance = standard_skeleton.distance_2d(idx_start, idx_end)
             try:
                 math_functions.z_axis_calc(self.points[idx_start],
-                                       self.points[idx_end],
-                                       standard_distance,
-                                       sign,
-                                       re_calc)
+                                           self.points[idx_end],
+                                           standard_distance,
+                                           sign,
+                                           re_calc)
             except AssertionError:
                 print(self.points[idx_start], self.points[idx_end])
                 print(self.points[idx_start].distance_2d(self.points[idx_end]))

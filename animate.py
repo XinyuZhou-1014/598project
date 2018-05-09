@@ -1,7 +1,7 @@
 import pygame
 from pygame.locals import *
 import sys
-import skeleton
+import skeleton as sk
 import argparse
 from numpy import array
 from math_functions import rotation_matrix
@@ -85,12 +85,22 @@ class Paint:
         self.__font = font
         s_list = skeleton_list
         self._shapelist = []
+
+        s_list[0].points_to_3d(s_list[0])
+        init_head_pos = s_list[0].animate_points[0]
+        x = init_head_pos.x * scale_factor - 110
+        y = init_head_pos.y * scale_factor - 25
+        z = init_head_pos.z * scale_factor
+        self.ax_val_adjust_point = [x, y, z]
+        print(x, y, z)
+
         for skeleton in s_list:
             skeleton.points_to_3d(s_list[0])
             v_list = []
             for point in skeleton.animate_points:
                 # multiply by scale_factor to fit the obejct into screen
-                v_list.append((point.x * scale_factor,
+                v_list.append((point.x * scale_factor - 65,  
+                               # mystery value for rotate axis adjust 
                                point.y * scale_factor,
                                point.z * scale_factor))
 
@@ -145,18 +155,28 @@ class Paint:
     def __draw_shape(self, point_size=POINT_SIZE, line_width=LINE_WIDTH):
         for start, end in self.__shape.lines:
             # number to fit into the screen
+            # hardcode for display position adjust
+            new_start = [0, 0, 0]
+            new_end = [0, 0, 0]
+            new_start[0] = start[0] - self.ax_val_adjust_point[0]
+            new_start[1] = start[1] - self.ax_val_adjust_point[1]
+            new_start[2] = start[2] - self.ax_val_adjust_point[2]
+            new_end[0] = end[0] - self.ax_val_adjust_point[0]
+            new_end[1] = end[1] - self.ax_val_adjust_point[1]
+            new_end[2] = end[2] - self.ax_val_adjust_point[2] 
+
             pygame.draw.line(self.__screen,
                              LINE_COLOR,
-                             self.__fit(start),
-                             self.__fit(end),
+                             self.__fit(new_start),
+                             self.__fit(new_end),
                              line_width)
             pygame.draw.circle(self.__screen,
                                POINT_COLOR,
-                               self.__fit(start),
+                               self.__fit(new_start),
                                point_size)
             pygame.draw.circle(self.__screen,
                                POINT_COLOR,
-                               self.__fit(end),
+                               self.__fit(new_end),
                                point_size)
             # TODO: some repeated points
 
@@ -188,7 +208,7 @@ class Paint:
 
 
 def main():
-    skeleton_list = skeleton.create_skeleton_list(
+    skeleton_list = sk.create_skeleton_list(
         path, smooth_factor, skip_factor)
     pygame.init()
     caption = "Control - q, w: X; a, s: Y; z, x: Z, r: Reset, space: Restart"
