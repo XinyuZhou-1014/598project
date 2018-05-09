@@ -91,8 +91,8 @@ class Paint:
         x = init_head_pos.x * scale_factor - 110
         y = init_head_pos.y * scale_factor - 25
         z = init_head_pos.z * scale_factor
-        self.ax_val_adjust_point = [x, y, z]
-        print(x, y, z)
+        self.ax_val_adjust = [x, y, z]
+        self.user_ax_adjust = [0, 0]
 
         for skeleton in s_list:
             skeleton.points_to_3d(s_list[0])
@@ -147,10 +147,25 @@ class Paint:
                 Physical.rotate(*rotate_handle_params[key])
             if keys[K_r]:
                 Physical.reset_rotation()
+                self.user_ax_adjust = [0, 0]
             if keys[K_SPACE]:
                 Physical.reset_rotation()
                 self._idx = -1
                 self._updateshape()
+                self.user_ax_adjust = [0, 0]
+        
+        MOVE = 5
+        display_adjust_params = {
+            K_UP: [0, -MOVE], 
+            K_DOWN: [0, MOVE], 
+            K_LEFT: [-MOVE, 0], 
+            K_RIGHT: [MOVE, 0] 
+        }
+        for key in display_adjust_params:
+            if keys[key]:
+                x, y = display_adjust_params[key]
+                self.user_ax_adjust = [self.user_ax_adjust[0] + x, 
+                                       self.user_ax_adjust[1] + y]
 
     def __draw_shape(self, point_size=POINT_SIZE, line_width=LINE_WIDTH):
         for start, end in self.__shape.lines:
@@ -158,12 +173,12 @@ class Paint:
             # hardcode for display position adjust
             new_start = [0, 0, 0]
             new_end = [0, 0, 0]
-            new_start[0] = start[0] - self.ax_val_adjust_point[0]
-            new_start[1] = start[1] - self.ax_val_adjust_point[1]
-            new_start[2] = start[2] - self.ax_val_adjust_point[2]
-            new_end[0] = end[0] - self.ax_val_adjust_point[0]
-            new_end[1] = end[1] - self.ax_val_adjust_point[1]
-            new_end[2] = end[2] - self.ax_val_adjust_point[2] 
+            new_start[0] = start[0] - self.ax_val_adjust[0] + self.user_ax_adjust[0]
+            new_start[1] = start[1] - self.ax_val_adjust[1] + self.user_ax_adjust[1]
+            new_start[2] = start[2] - self.ax_val_adjust[2]
+            new_end[0] = end[0] - self.ax_val_adjust[0] + self.user_ax_adjust[0]
+            new_end[1] = end[1] - self.ax_val_adjust[1] + self.user_ax_adjust[1]
+            new_end[2] = end[2] - self.ax_val_adjust[2] 
 
             pygame.draw.line(self.__screen,
                              LINE_COLOR,
